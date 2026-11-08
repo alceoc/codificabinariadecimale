@@ -1,0 +1,718 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Dal binario al decimale</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: un foglio di quaderno a quadretti al centro, con la tabella delle divisioni; a lato i passi del metodo e il punteggio. */
+:root {
+  --bg: #e8edf4;
+  --paper: #f8fafd;
+  --grid: #d6e0ee;
+  --margin: #e2a19c;
+  --text: #1a2232;
+  --muted: #5a6579;
+  --ink: #1d3c94;
+  --ink-soft: #e3eafb;
+  --red: #c42f27;
+  --red-soft: #fbe6e4;
+  --green: #1d7a4b;
+  --green-soft: #def3e8;
+  --line: #c9d3e2;
+  --f-hand: "Kalam", "Comic Sans MS", cursive;
+  --f-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --cell: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d131d; --paper: #141d2b; --grid: #1f2c40; --margin: #6e3b41;
+    --text: #e3e9f3; --muted: #94a1b6; --ink: #93b4ff; --ink-soft: #1c2a47;
+    --red: #ff8073; --red-soft: #3a1f22; --green: #62d39c; --green-soft: #15342a;
+    --line: #2b3a51; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d131d; --paper: #141d2b; --grid: #1f2c40; --margin: #6e3b41;
+  --text: #e3e9f3; --muted: #94a1b6; --ink: #93b4ff; --ink-soft: #1c2a47;
+  --red: #ff8073; --red-soft: #3a1f22; --green: #62d39c; --green-soft: #15342a;
+  --line: #2b3a51; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { font-family: var(--f-hand); font-weight: 700; font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1; margin: 0; color: var(--ink); text-wrap: balance; }
+h1 sub { font-family: var(--f-mono); font-size: .45em; color: var(--red); vertical-align: baseline; margin-left: 2px; }
+.tagline { margin: 6px 0 0; color: var(--muted); max-width: 52ch; }
+.score { display: flex; gap: 16px; font-family: var(--f-mono); font-size: .85rem; color: var(--muted); }
+.score b { display: block; font-size: 1.4rem; color: var(--text); font-variant-numeric: tabular-nums; }
+
+nav.levels { display: flex; flex-wrap: wrap; gap: 8px; }
+.lv {
+  font: inherit; cursor: pointer; border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
+  padding: 8px 14px; border-radius: 999px; display: inline-flex; gap: 8px; align-items: center;
+}
+.lv .num { font-family: var(--f-mono); font-weight: 700; color: var(--ink); }
+.lv .stars { font-size: .8rem; color: var(--muted); letter-spacing: 1px; }
+.lv .stars .on { color: #d89a12; }
+.lv[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.lv[aria-pressed="true"] .num, .lv[aria-pressed="true"] .stars { color: var(--paper); }
+.lv:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 820px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.sheet {
+  position: relative; min-width: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+  border-radius: 6px; box-shadow: 0 1px 0 var(--line), 0 10px 30px -18px rgba(20,40,80,.45);
+  padding: 22px 22px 26px 52px;
+}
+.sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: 34px; width: 2px; background: var(--margin); }
+.sheet h2 { font-family: var(--f-hand); font-size: 1.6rem; margin: 0; line-height: 1.2; }
+.sheet h2 .big { font-family: var(--f-mono); color: var(--ink); }
+.goal { margin: 4px 0 16px; color: var(--muted); font-size: .95rem; max-width: 60ch; }
+
+.sfida-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.chip { font: inherit; font-size: .9rem; cursor: pointer; padding: 5px 12px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--paper); color: var(--text); }
+.chip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 700; background: var(--ink-soft); }
+
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-family: var(--f-mono); font-variant-numeric: tabular-nums; min-width: 420px; width: 100%; }
+th { font-family: var(--f-body); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; text-align: center; padding: 6px 4px; border-bottom: 2px solid var(--ink); }
+td { text-align: center; padding: 6px 4px; font-size: 1.25rem; font-weight: 500; border-bottom: 1px dashed var(--line); height: 52px; }
+td.op { color: var(--muted); width: 24px; font-size: 1rem; }
+td.div { color: var(--text); }
+td.q, td.r { color: var(--ink); font-weight: 700; }
+td.r { border-left: 2px solid var(--line); }
+tr.new td.div { animation: slide .45s ease-out; }
+@keyframes slide { from { transform: translateY(-14px); opacity: .2; } to { transform: none; opacity: 1; } }
+.cellin {
+  width: 4.6em; font: inherit; font-weight: 700; text-align: center; color: var(--ink);
+  background: var(--paper); border: 2px solid var(--ink); border-radius: 6px; padding: 4px 2px;
+}
+.cellin.r { width: 3em; }
+.cellin:disabled { opacity: .35; border-style: dashed; cursor: not-allowed; }
+.pw { line-height: 1.25; margin-bottom: 3px; }
+.pw.start { color: var(--red); font-family: var(--f-hand); font-size: .95rem; font-weight: 700; white-space: nowrap; }
+.cellin.bad { border-color: var(--red); background: var(--red-soft); animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+.bitbtn {
+  font: inherit; font-weight: 700; cursor: pointer; min-width: 2.4em; padding: 4px 8px; border-radius: 6px;
+  border: 2px dashed var(--ink); background: var(--ink-soft); color: var(--ink);
+}
+.bitbtn.used { border-style: solid; background: var(--green-soft); border-color: var(--green); color: var(--green); cursor: default; }
+.bitbtn.nope { border-color: var(--red); background: var(--red-soft); color: var(--red); animation: shake .3s; }
+.read-hint { color: var(--red); font-family: var(--f-hand); font-size: 1rem; text-transform: none; letter-spacing: 0; display: block; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+.btn { font: inherit; font-weight: 700; cursor: pointer; padding: 10px 18px; border-radius: 8px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.note {
+  margin-top: 14px; font-family: var(--f-hand); font-size: 1.2rem; line-height: 1.35; min-height: 1.6em;
+  max-width: 60ch;
+}
+.note.bad { color: var(--red); }
+.note.good { color: var(--green); }
+.note.info { color: var(--muted); }
+
+.result { margin-top: 18px; display: grid; gap: 12px; }
+.slots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--f-mono); }
+.slots .lbl { font-family: var(--f-mono); font-size: 1.3rem; font-weight: 700; margin-right: 6px; }
+.slot { width: 1.9em; height: 2.2em; display: grid; place-items: center; border-bottom: 3px solid var(--ink); font-size: 1.5rem; font-weight: 700; color: var(--ink); }
+.slot.empty { color: transparent; border-bottom-color: var(--line); }
+.slot.pop { animation: pop .3s ease-out; }
+@keyframes pop { from { transform: scale(1.6); } to { transform: none; } }
+
+.final { font-family: var(--f-mono); font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 700; }
+.final sub { font-size: .55em; color: var(--red); }
+.final .bin { color: var(--ink); }
+.stamp {
+  display: inline-block; font-family: var(--f-hand); font-weight: 700; color: var(--red);
+  border: 3px solid var(--red); border-radius: 8px; padding: 2px 12px; transform: rotate(-4deg); font-size: 1.4rem;
+  animation: stamp .35s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes stamp { from { transform: rotate(-4deg) scale(2); opacity: 0; } to { transform: rotate(-4deg) scale(1); opacity: 1; } }
+.check { background: var(--paper); border: 1.5px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+.check h3 { margin: 0 0 8px; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.wgrid { display: flex; gap: 4px; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wcol { display: grid; gap: 2px; text-align: center; min-width: 2.6em; }
+.wcol .w { font-size: .78rem; color: var(--muted); }
+.wcol .b { font-size: 1.2rem; font-weight: 700; color: var(--muted); border-radius: 4px; }
+.wcol.on .b { color: var(--green); background: var(--green-soft); }
+.wcol.on .w { color: var(--green); font-weight: 700; }
+.sum { margin-top: 8px; font-family: var(--f-mono); font-size: .95rem; }
+
+aside { display: grid; gap: 16px; min-width: 0; }
+.panel { background: var(--paper); border: 1.5px solid var(--line); border-radius: 8px; padding: 16px; }
+.panel h3 { margin: 0 0 10px; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: s; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 26px 1fr; gap: 8px; font-size: .92rem; color: var(--muted); padding: 4px 6px; border-radius: 6px; transition: background .2s; }
+ol.steps li::before { content: counter(s); font-family: var(--f-mono); font-weight: 700; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--line); font-size: .78rem; }
+ol.steps li.done { color: var(--text); }
+ol.steps li.done::before { content: "✓"; background: var(--green-soft); border-color: var(--green); color: var(--green); }
+ol.steps li.now { background: var(--ink-soft); color: var(--text); font-weight: 700; }
+ol.steps li.now::before { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.tip { font-size: .9rem; color: var(--muted); margin: 0; }
+.tip b { color: var(--text); }
+.legend { display: grid; gap: 4px; font-size: .88rem; }
+.legend span { font-family: var(--f-mono); font-weight: 700; color: var(--ink); }
+
+.modes { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 10px; background: var(--paper); border: 1.5px solid var(--line); max-width: 100%; }
+.mode { font: inherit; font-weight: 700; cursor: pointer; border: 0; background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 7px; }
+.mode .ar { font-family: var(--f-mono); color: var(--red); }
+.mode[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.mode[aria-pressed="true"] .ar { color: var(--paper); }
+.bar { display: grid; gap: 12px; }
+
+table.bt { min-width: 0; width: auto; }
+table.bt th[scope="row"] { text-align: left; padding-right: 14px; white-space: nowrap; border-bottom: 1px dashed var(--line); border-right: 2px solid var(--ink); }
+table.bt td { min-width: 3.4em; padding: 6px 6px; }
+table.bt td.dig { font-size: 1.7rem; font-weight: 700; color: var(--text); }
+table.bt td.dig.one { color: var(--ink); }
+table.bt td.val { color: var(--ink); font-weight: 700; }
+table.bt td.val small { display: block; font-size: .7rem; color: var(--muted); font-weight: 500; }
+table.bt td .pw { font-size: .85rem; color: var(--muted); display: block; }
+table.bt tr.active th { color: var(--ink); }
+table.bt .cellin { width: 3.4em; }
+table.bt tr.fresh td.val { animation: slide .45s ease-out; }
+.sumline { margin-top: 16px; font-family: var(--f-mono); font-size: 1.2rem; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.sumline .lbl { font-family: var(--f-body); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; width: 100%; }
+.sumline b { color: var(--ink); }
+.mults { font-family: var(--f-mono); display: grid; gap: 2px; font-size: .95rem; }
+.mults .z { color: var(--muted); }
+.demo-text { background: var(--paper); border: 1.5px solid var(--line); border-left: 4px solid var(--ink); border-radius: 6px; padding: 12px 14px; margin-top: 16px; max-width: 62ch; }
+.demo-text p { margin: 0; }
+.demo-text p + p { margin-top: 6px; color: var(--muted); font-size: .92rem; }
+.demo-text .ph { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--red); font-weight: 700; margin-bottom: 4px; display: block; }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--ink); }
+
+@media (max-width: 480px) {
+  .sheet { padding: 18px 12px 22px 34px; }
+  .sheet::before { left: 22px; }
+  td { font-size: 1.05rem; }
+  table.bt td.dig { font-size: 1.35rem; }
+  table.bt td { min-width: 2.1em; padding: 6px 2px; font-size: .95rem; }
+  table.bt .cellin { width: 2.3em; padding: 4px 0; }
+  table.bt th[scope="row"] { white-space: normal; padding-right: 6px; font-size: .62rem; max-width: 5.5em; }
+  .mode { padding: 7px 10px; font-size: .9rem; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="h1">Dal binario al decimale</h1>
+      <p class="tagline" id="tagline"></p>
+    </div>
+    <div class="score" aria-live="polite">
+      <div>Punti<b id="pts">0</b></div>
+      <div>Stelle<b id="totStars">0/9</b></div>
+      <div>Serie<b id="streak">0</b></div>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="modes" role="group" aria-label="Tipo di conversione">
+      <button class="mode" data-mode="d2b">Decimale <span class="ar">→</span> Binario</button>
+      <button class="mode" data-mode="b2d">Binario <span class="ar">→</span> Decimale</button>
+    </div>
+    <nav class="levels" id="levels" aria-label="Esercizi"></nav>
+  </div>
+
+  <div class="main">
+    <section class="sheet" id="sheet" aria-live="polite"></section>
+    <aside>
+      <div class="panel">
+        <h3 id="stepsTitle">Il metodo</h3>
+        <ol class="steps" id="steps"></ol>
+      </div>
+      <div class="panel">
+        <h3>Promemoria</h3>
+        <div class="legend" id="memo"></div>
+      </div>
+      <div class="panel">
+        <h3>Come si guadagnano le stelle</h3>
+        <p class="tip"><b>3 stelle</b> senza errori, <b>2</b> con uno o due errori, <b>1</b> se finisci comunque. Ogni riga giusta vale 10 punti, il risultato finale 20.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MODES = {
+    d2b: {
+      tagline: "Converti i numeri decimali in binario con il metodo delle divisioni successive per 2. Completa la tabella riga per riga, poi leggi i resti dal basso verso l'alto.",
+      levels: [
+        { id: "e1", label: "Esercizio 1", n: 52 },
+        { id: "e2", label: "Esercizio 2", n: 17 },
+        { id: "e3", label: "Esercizio 3", n: 150 },
+        { id: "sfida", label: "Sfida" }
+      ],
+      steps: [
+        "Parti dal numero dato.",
+        "Dividi il numero per 2.",
+        "Scrivi il quoziente e il resto nelle rispettive colonne.",
+        "Usa il quoziente appena ottenuto come nuovo numero da dividere.",
+        "Continua a dividere per 2 finché il quoziente diventa 0.",
+        "Leggi i resti dal basso verso l'alto."
+      ],
+      memo: '<div><span>Quoziente</span> = il risultato della divisione, senza virgola.</div><div><span>Resto</span> = 0 se il numero è pari, 1 se è dispari.</div>',
+      diff: { facile: [5, 31], medio: [32, 255], difficile: [256, 1023] }
+    },
+    b2d: {
+      tagline: "Converti i numeri binari in decimale: scrivi le posizioni da destra, trasformale in potenze di 2, moltiplica ogni cifra per la sua potenza e somma i risultati.",
+      levels: [
+        { id: "oss", label: "Osserva", n: "101" },
+        { id: "b1", label: "Esercizio 1", n: "1001" },
+        { id: "b2", label: "Esercizio 2", n: "11011" },
+        { id: "b3", label: "Esercizio 3", n: "100110" },
+        { id: "bsfida", label: "Sfida" }
+      ],
+      steps: [
+        "Scrivi le cifre binarie e le posizioni da destra verso sinistra, partendo da zero.",
+        "Trasforma la posizione in potenza di 2.",
+        "Moltiplica ogni cifra binaria per la sua potenza di 2.",
+        "Somma i risultati.",
+        "Scrivi il numero decimale ottenuto."
+      ],
+      memo: '<div><span>Posizione</span> = si conta da destra: la cifra più a destra ha sempre posizione 0, poi 1, 2, 3…</div><div><span>Potenze di 2</span> = 2⁰=1, 2¹=2, 2²=4, 2³=8, 2⁴=16, 2⁵=32, 2⁶=64, 2⁷=128</div><div><span>Cifra × potenza</span> = se la cifra è 0 il risultato è sempre 0 (es. 0 × 8 = 0); se la cifra è 1 il risultato è la potenza stessa (es. 1 × 8 = 8).</div>',
+      diff: { facile: [3, 4], medio: [5, 6], difficile: [7, 8] }
+    }
+  };
+  // Seconda lezione: metti true per riattivare la parte Binario → Decimale.
+  const B2D_ENABLED = false;
+  const STAR_LEVELS = ["b1", "b2", "b3"];
+  const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  const sup = n => String(n).split("").map(c => SUP[c]).join("");
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("div2:" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("div2:" + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const saved = { stars: store.get("stars", {}), pts: store.get("pts", 0), best: store.get("best", 0) };
+  let mode = store.get("mode", "d2b");
+  mode = "b2d";
+  const diffs = { d2b: store.get("diff", "medio"), b2d: store.get("diffB", "medio") };
+  let S = null;
+  let streak = 0;
+
+  const $ = id => document.getElementById(id);
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const starsFor = err => err === 0 ? 3 : err <= 2 ? 2 : 1;
+  const starStr = n => [1, 2, 3].map(k => '<span class="' + (k <= n ? "on" : "") + '">★</span>').join("");
+  const cheer = () => ["Giusto!", "Esatto!", "Perfetto!", "Bravo!", "Ottimo!"][rnd(0, 4)];
+  function addPts(p) { saved.pts += p; store.set("pts", saved.pts); }
+  function isSfida() { return S.level === "sfida" || S.level === "bsfida"; }
+
+  function recordFinish() {
+    const st = starsFor(S.errors);
+    if (isSfida()) {
+      streak = S.errors === 0 ? streak + 1 : 0;
+      if (streak > saved.best) { saved.best = streak; store.set("best", saved.best); }
+    } else if (STAR_LEVELS.includes(S.level)) {
+      if (st > (saved.stars[S.level] || 0)) { saved.stars[S.level] = st; store.set("stars", saved.stars); }
+    }
+    return st;
+  }
+
+  function start(id, keep) {
+    if (mode === "d2b") startD(id, keep); else startB(id, keep);
+  }
+
+  function setMode(m) {
+    if (m === "d2b") return;
+    mode = m; store.set("mode", m);
+    start(MODES[m].levels[m === "b2d" ? 0 : 0].id);
+  }
+
+  /* ---------- Decimale → Binario ---------- */
+  function startD(id, keep) {
+    let n = (MODES.d2b.levels.find(l => l.id === id) || {}).n;
+    if (id === "sfida") { const [a, b] = MODES.d2b.diff[diffs.d2b]; n = keep || rnd(a, b); }
+    S = { mode: "d2b", level: id, n, rows: [{ div: n }], phase: "divide", errors: 0, rowErr: 0, picked: [], newRow: false };
+    S.note = { t: id === "e1" ? "Comincia: quanto fa " + n + " : 2? E qual è il resto?" : "Dividi " + n + " per 2.", c: "info" };
+    render(); focusFirst();
+  }
+
+  function checkRowD() {
+    const row = S.rows[S.rows.length - 1];
+    const q = $("qIn").value.trim(), r = $("rIn").value.trim();
+    if (q === "" || r === "") { S.note = { t: "Scrivi sia il quoziente sia il resto.", c: "info" }; renderNote(); return; }
+    const qOk = /^\d+$/.test(q) && Number(q) === Math.floor(row.div / 2);
+    const rOk = /^[01]$/.test(r) && Number(r) === row.div % 2;
+    if (qOk && rOk) { acceptD(row); return; }
+    S.errors++; S.rowErr++;
+    let msg;
+    if (!rOk && /^\d+$/.test(r) && Number(r) > 1) msg = "Dividendo per 2 il resto può essere solo 0 o 1.";
+    else if (!qOk && !rOk) msg = "Ricontrolla entrambi. Quanto fa la metà di " + row.div + "?";
+    else if (!qOk) msg = row.div % 2 ? row.div + " è dispari: togli 1 e poi fai la metà. Il quoziente è la metà di " + (row.div - 1) + "." : "Il quoziente è la metà di " + row.div + ".";
+    else msg = row.div + (row.div % 2 ? " è dispari" : " è pari") + ": quale deve essere il resto? Ricontrolla.";
+    S.note = { t: msg, c: "bad" };
+    S.bad = { q: !qOk, r: !rOk };
+    S.keep = { q, r };
+    render();
+    (qOk ? $("rIn") : $("qIn")).select();
+  }
+
+  function acceptD(row, shown) {
+    row.q = Math.floor(row.div / 2); row.r = row.div % 2;
+    S.bad = null; S.keep = null; S.rowErr = 0;
+    if (!shown) addPts(10);
+    if (row.q === 0) {
+      S.phase = "read";
+      S.note = { t: "Il quoziente è 0: la tabella è finita! Ora tocca i resti dal basso verso l'alto.", c: "good" };
+    } else {
+      S.rows.push({ div: row.q }); S.newRow = true;
+      S.note = { t: (shown ? "Ecco la soluzione. " : cheer() + " ") + "Il quoziente " + row.q + " diventa il nuovo dividendo.", c: shown ? "info" : "good" };
+    }
+    render(); focusFirst();
+  }
+
+  function pickD(i) {
+    const expected = S.rows.length - 1 - S.picked.length;
+    if (i !== expected) {
+      S.errors++; S.nope = i;
+      S.note = { t: i < expected ? "Si legge dal basso verso l'alto: parti dall'ultimo resto, quello in fondo." : "Questo l'hai già preso. Sali di una riga.", c: "bad" };
+      render(); return;
+    }
+    S.nope = null; S.picked.push(i);
+    if (S.picked.length === S.rows.length) {
+      S.phase = "done"; addPts(20); recordFinish();
+      S.note = { t: S.errors === 0 ? "Nessun errore. Complimenti!" : "Fatto! Errori commessi: " + S.errors + ".", c: "good" };
+      render(); const nb = $("nextBtn"); if (nb) nb.focus();
+    } else { S.note = { t: "Bene, continua a salire.", c: "good" }; render(); }
+  }
+
+  function sheetD() {
+    const lv = MODES.d2b.levels.find(l => l.id === S.level);
+    const sf = isSfida();
+    let h = '<h2>' + (sf ? "Sfida · " : lv.label + " · ") + 'converti <span class="big">' + S.n + '</span></h2>';
+    h += '<p class="goal">' + (S.level === "e1" ? "Obiettivo: esercitarsi nella conversione di un numero decimale in binario usando il metodo delle divisioni successive per 2." : sf ? "Un numero a caso ogni volta. Finisci senza errori per allungare la serie." : "Numero da convertire: " + S.n + ".") + '</p>';
+    if (sf) h += diffBar("d2b");
+    h += '<div class="tbl-wrap"><table><thead><tr><th>Dividendo</th><th></th><th>Divisore</th><th></th><th>Quoziente</th><th>Resto' + (S.phase === "read" ? '<span class="read-hint">↑ leggi dal basso</span>' : "") + '</th></tr></thead><tbody>';
+    S.rows.forEach((row, i) => {
+      const last = i === S.rows.length - 1;
+      const editing = S.phase === "divide" && last;
+      h += '<tr class="' + (last && S.newRow ? "new" : "") + '"><td class="div">' + row.div + '</td><td class="op">:</td><td class="div">2</td><td class="op">=</td>';
+      if (editing) {
+        const k = S.keep || { q: "", r: "" };
+        h += '<td class="q"><input id="qIn" class="cellin' + (S.bad && S.bad.q ? " bad" : "") + '" value="' + k.q + '" inputmode="numeric" autocomplete="off" aria-label="Quoziente di ' + row.div + ' diviso 2"></td>';
+        h += '<td class="r"><input id="rIn" class="cellin r' + (S.bad && S.bad.r ? " bad" : "") + '" value="' + k.r + '" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Resto"></td>';
+      } else {
+        h += '<td class="q">' + row.q + '</td>';
+        if (S.phase !== "divide") {
+          const used = S.picked.includes(i);
+          h += '<td class="r"><button class="bitbtn' + (used ? " used" : "") + (S.nope === i ? " nope" : "") + '" data-pick="' + i + '"' + (used || S.phase === "done" ? " disabled" : "") + ' aria-label="Resto ' + row.r + ' della riga ' + (i + 1) + '">' + row.r + '</button></td>';
+        } else h += '<td class="r">' + row.r + '</td>';
+      }
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+    if (S.phase === "divide") {
+      h += '<div class="actions"><button class="btn" id="checkBtn">Controlla</button>' + (S.rowErr >= 2 ? '<button class="btn ghost" id="solBtn">Mostra la soluzione di questa riga</button>' : "") + '<button class="btn ghost" id="resetBtn">Ricomincia</button></div>';
+    }
+    h += noteHtml();
+    if (S.phase !== "divide") {
+      const bits = S.picked.map(i => S.rows[i].r).join("");
+      h += '<div class="result"><div class="slots" aria-label="Numero binario"><span class="lbl">' + S.n + ' in binario =</span>';
+      for (let k = 0; k < S.rows.length; k++) {
+        const b = bits[k];
+        h += '<span class="slot' + (b == null ? " empty" : "") + (k === bits.length - 1 && S.phase === "read" ? " pop" : "") + '">' + (b == null ? "·" : b) + '</span>';
+      }
+      h += '</div>';
+      if (S.phase === "done") {
+        h += '<div class="final">' + S.n + '<sub>10</sub> = <span class="bin">' + bits + '</span><sub>2</sub> <span class="stamp">' + "★".repeat(starsFor(S.errors)) + '</span></div>';
+        h += '<div class="check"><h3>Riepilogo</h3><div class="mults"><span>Hai diviso ' + S.n + ' per 2 per ' + S.rows.length + ' volte, fino ad arrivare a quoziente 0.</span><span>Resti letti dal basso verso l\'alto: <b>' + bits.split("").join(" ") + '</b></span></div><div class="sum">' + S.n + ' in binario = ' + bits + ' ✓</div></div>';
+        const idx = MODES.d2b.levels.findIndex(l => l.id === S.level);
+        const next = sf ? "Nuovo numero" : idx < 2 ? "Vai all'" + MODES.d2b.levels[idx + 1].label.toLowerCase() : "Passa alla sfida";
+        h += '<div class="actions"><button class="btn" id="nextBtn">' + next + '</button><button class="btn ghost" id="resetBtn">Rifai questo</button>' + (B2D_ENABLED ? '<button class="btn ghost" data-mode="b2d">Prova binario → decimale</button>' : '') + '</div>';
+      }
+      h += '</div>';
+    }
+    return h;
+  }
+
+  function stepsNowD() {
+    if (S.phase === "divide") return S.rows.length === 1 ? 2 : 4;
+    return S.phase === "read" ? 5 : 6;
+  }
+
+  /* ---------- Binario → Decimale ---------- */
+  const PH = ["pos", "pow", "mul", "sum", "done"];
+  const ROWS = ["Posizioni", "Potenze di 2", "Cifra × potenza"];
+
+  function startB(id, keep) {
+    let bin = (MODES.b2d.levels.find(l => l.id === id) || {}).n;
+    if (id === "bsfida") {
+      if (keep) bin = keep;
+      else { const [a, b] = MODES.b2d.diff[diffs.b2d]; const L = rnd(a, b); bin = "1"; for (let i = 1; i < L; i++) bin += rnd(0, 1); }
+    }
+    S = { mode: "b2d", level: id, bin, digits: bin.split("").map(Number), phase: "pos", errors: 0, phaseErr: 0, vals: [], bad: [], fresh: -1 };
+    if (id === "oss") { S.demo = true; S.step = 0; }
+    S.note = { t: id === "oss" ? "" : "Passo 1: comincia dalla cifra più a destra e scrivi 0, poi vai verso sinistra: 1, 2, 3…", c: "info" };
+    render(); focusFirst();
+  }
+
+  const L = () => S.digits.length;
+  function expected(k, i) {
+    const p = L() - 1 - i;
+    return k === 0 ? p : k === 1 ? 2 ** p : S.digits[i] * 2 ** p;
+  }
+  const total = () => S.digits.reduce((a, d, i) => a + d * 2 ** (L() - 1 - i), 0);
+  const prods = () => S.digits.map((d, i) => expected(2, i));
+
+  function checkB() {
+    const k = PH.indexOf(S.phase);
+    if (S.phase === "sum") {
+      const v = $("sumIn").value.trim();
+      if (v === "") { S.note = { t: "Scrivi il risultato della somma.", c: "info" }; renderNote(); return; }
+      if (/^\d+$/.test(v) && Number(v) === total()) { finishB(); return; }
+      S.errors++; S.phaseErr++; S.sumBad = true; S.sumVal = v;
+      S.note = { t: "Non torna. Somma solo i prodotti della riga “Cifra × potenza”: " + prods().join(" + ") + ".", c: "bad" };
+      render(); $("sumIn").select(); return;
+    }
+    const vals = S.digits.map((_, i) => $("c" + i).value.trim());
+    if (vals.some(v => v === "")) { S.vals = vals; S.note = { t: "Completa tutte le caselle della riga prima di controllare.", c: "info" }; renderNote(); return; }
+    const bad = vals.map((v, i) => !(/^\d+$/.test(v) && Number(v) === expected(k, i)));
+    if (!bad.includes(true)) { acceptB(); return; }
+    S.errors++; S.phaseErr++; S.vals = vals; S.bad = bad;
+    const i = bad.indexOf(true), p = L() - 1 - i;
+    let msg;
+    if (k === 0) msg = "Le posizioni si contano da destra: la cifra più a destra ha posizione 0, poi si sale di 1 andando verso sinistra.";
+    else if (k === 1) msg = p === 0 ? "Qualsiasi numero elevato a 0 vale 1: 2⁰ = 1." : "2" + sup(p) + " vuol dire moltiplicare 2 per se stesso " + p + (p === 1 ? " volta" : " volte") + ": " + Array(p).fill(2).join(" × ") + ".";
+    else msg = S.digits[i] === 0 ? "Una cifra 0 moltiplicata per qualsiasi potenza dà sempre 0." : "Una cifra 1 lascia la potenza com'è: 1 × " + 2 ** p + " = ?";
+    S.note = { t: msg, c: "bad" };
+    render();
+    const el = $("c" + i); if (el) el.select();
+  }
+
+  function acceptB(shown) {
+    const k = PH.indexOf(S.phase);
+    if (!shown) addPts(10);
+    S.fresh = k; S.phaseErr = 0; S.vals = []; S.bad = [];
+    S.phase = PH[k + 1];
+    const nextMsg = {
+      pow: "Passo 2: trasforma ogni posizione in una potenza di 2.",
+      mul: "Passo 3: moltiplica ogni cifra binaria per la sua potenza di 2.",
+      sum: "Passo 4: somma i risultati."
+    }[S.phase];
+    S.note = { t: (shown ? "Ecco la soluzione. " : cheer() + " ") + nextMsg, c: shown ? "info" : "good" };
+    render(); focusFirst();
+  }
+
+  function showSolB() {
+    S.errors++;
+    if (S.phase === "sum") finishB(true); else acceptB(true);
+  }
+
+  function finishB(shown) {
+    if (!shown) addPts(20);
+    S.phase = "done"; S.fresh = -1; recordFinish();
+    S.note = { t: S.errors === 0 ? "Nessun errore. Complimenti!" : "Fatto! Errori commessi: " + S.errors + ".", c: "good" };
+    render(); const nb = $("nextBtn"); if (nb) nb.focus();
+  }
+
+  const DEMO = {
+    "101": [
+      ["Fase 1 · Osserva e capisci", "Prendiamo un numero binario semplice: 101."],
+      ["Passo 1", "Scriviamo le posizioni di ogni cifra binaria partendo da destra verso sinistra.", "Nota: la cifra più a destra ha sempre posizione 0, poi si va a salire: 1, 2, 3…"],
+      ["Passo 2", "Calcoliamo la potenza di 2 usando come esponente la posizione della cifra binaria."],
+      ["Passo 3", "Calcoliamo il prodotto di ogni cifra binaria con la corrispondente potenza di due: 1 × 4 = 4, 0 × 2 = 0, 1 × 1 = 1."],
+      ["Passo 4", "Sommiamo i risultati: 4 + 0 + 1 = 5."],
+      ["Passo 5", "Allora possiamo dire che 101 in binario = 5 in decimale, ovvero 101₂ = 5₁₀."]
+    ],
+    "1011": [
+      ["Riassumendo", "Dato il numero binario 1011, ripetiamo gli stessi passi."],
+      ["Passo 1", "Scrivi le cifre binarie e le posizioni delle cifre da destra verso sinistra, partendo da zero."],
+      ["Passo 2", "Trasforma la posizione in potenza di 2: 2³=8, 2²=4, 2¹=2, 2⁰=1."],
+      ["Passo 3", "Moltiplica ogni cifra binaria per la sua potenza di 2: 1 × 8 = 8, 0 × 4 = 0, 1 × 2 = 2, 1 × 1 = 1."],
+      ["Passo 4", "Somma i risultati: 8 + 0 + 2 + 1 = 11."],
+      ["Passo 5", "Scrivi il numero decimale ottenuto: 1011 in binario = 11 in decimale, ovvero 1011₂ = 11₁₀."]
+    ]
+  };
+
+  function sheetB() {
+    const lv = MODES.b2d.levels.find(l => l.id === S.level);
+    const sf = isSfida();
+    const demo = !!S.demo;
+    const pi = demo ? S.step : PH.indexOf(S.phase);
+    let h = '<h2>' + (demo ? "Osserva e capisci · " : (sf ? "Sfida" : lv.label) + " · ") + 'converti <span class="big">' + S.bin + '</span><sub style="font-family:var(--f-mono);color:var(--red)">2</sub></h2>';
+    h += '<p class="goal">' + (demo ? "Obiettivo: esercitarsi nella conversione di un numero binario in un numero del sistema di numerazione decimale. Guarda come si fa, un passo alla volta." : sf ? "Un numero binario a caso ogni volta. Finisci senza errori per allungare la serie." : "Converti il numero binario " + S.bin + ".") + '</p>';
+    if (sf) h += diffBar("b2d");
+    h += '<div class="tbl-wrap"><table class="bt"><tbody><tr><th scope="row">Cifre binarie</th>' + S.digits.map(d => '<td class="dig' + (d ? " one" : "") + '">' + d + '</td>').join("") + '</tr>';
+    ROWS.forEach((name, k) => {
+      const filled = pi > k, active = !demo && pi === k;
+      h += '<tr class="' + (active ? "active" : "") + (S.fresh === k || (demo && S.step === k + 1) ? " fresh" : "") + '"><th scope="row">' + name + '</th>';
+      S.digits.forEach((d, i) => {
+        const p = L() - 1 - i;
+        if (filled) {
+          if (k === 0) h += '<td class="val">' + p + '</td>';
+          else if (k === 1) h += '<td class="val">' + 2 ** p + '<small>2' + sup(p) + '</small></td>';
+          else h += '<td class="val">' + expected(2, i) + '<small>' + d + '×' + 2 ** p + '</small></td>';
+        } else if (active) {
+          const pre = k === 1 ? '<span class="pw">2' + sup(p) + ' =</span>' : k === 2 ? '<span class="pw">' + d + ' × ' + 2 ** p + '</span>' : (i === L() - 1 ? '<span class="pw start">inizia qui ↓</span>' : '<span class="pw">&nbsp;</span>');
+          const locked = k === 0 && S.digits.some((_, j) => j > i && !(S.vals[j] || ""));
+          h += '<td>' + pre + '<input id="c' + i + '" class="cellin' + (S.bad[i] ? " bad" : "") + '"' + (locked ? " disabled" : "") + ' value="' + (S.vals[i] || "") + '" inputmode="numeric" autocomplete="off" aria-label="' + name + ', cifra ' + (i + 1) + '"></td>';
+        } else h += '<td></td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+
+    if (pi >= 3) {
+      const pr = prods();
+      h += '<div class="sumline"><span class="lbl">Somma dei risultati</span>' + pr.join(" + ") + ' = ';
+      if (!demo && S.phase === "sum") h += '<input id="sumIn" class="cellin' + (S.sumBad ? " bad" : "") + '" value="' + (S.sumVal || "") + '" inputmode="numeric" autocomplete="off" aria-label="Somma">';
+      else h += '<b>' + total() + '</b>';
+      h += '</div>';
+    }
+
+    if (demo) {
+      const D = DEMO[S.bin][S.step];
+      h += '<div class="demo-text"><span class="ph">' + D[0] + '</span><p>' + D[1] + '</p>' + (D[2] ? '<p>' + D[2] + '</p>' : "") + '</div>';
+      if (S.step === 5) h += finalB();
+      const last = S.step === 5;
+      h += '<div class="actions"><button class="btn ghost" id="prevBtn"' + (S.step === 0 ? " disabled" : "") + '>Indietro</button>' +
+        (last ? (S.bin === "101" ? '<button class="btn" id="demo2Btn">Guarda l\'esempio 1011</button>' : '<button class="btn" id="nextBtn">Ora prova tu: 1001</button>') : '<button class="btn" id="fwdBtn">Avanti</button>') +
+        '<span class="dots" aria-hidden="true">' + [0, 1, 2, 3, 4, 5].map(i => '<i class="' + (i <= S.step ? "on" : "") + '"></i>').join("") + '</span></div>';
+      return h;
+    }
+
+    if (S.phase !== "done") {
+      h += '<div class="actions"><button class="btn" id="checkBtn">Controlla</button>' + (S.phaseErr >= 2 ? '<button class="btn ghost" id="solBtn">Mostra la soluzione</button>' : "") + '<button class="btn ghost" id="resetBtn">Ricomincia</button></div>';
+      h += noteHtml();
+    } else {
+      h += noteHtml() + finalB();
+      const idx = MODES.b2d.levels.findIndex(l => l.id === S.level);
+      const next = sf ? "Nuovo numero" : idx < 3 ? "Vai all'" + MODES.b2d.levels[idx + 1].label.toLowerCase() : "Passa alla sfida";
+      h += '<div class="actions"><button class="btn" id="nextBtn">' + next + '</button><button class="btn ghost" id="resetBtn">Rifai questo</button></div>';
+    }
+    return h;
+  }
+
+  function finalB() {
+    const lines = S.digits.map((d, i) => { const w = 2 ** (L() - 1 - i); return '<span class="' + (d ? "" : "z") + '">' + d + ' × ' + w + ' = ' + d * w + '</span>'; }).join("");
+    return '<div class="result"><div class="final"><span class="bin">' + S.bin + '</span><sub>2</sub> = ' + total() + '<sub>10</sub>' + (S.demo ? "" : ' <span class="stamp">' + "★".repeat(starsFor(S.errors)) + '</span>') + '</div>' +
+      '<div class="check"><h3>' + S.bin + ' in binario = ' + total() + ' in decimale</h3><div class="mults">' + lines + '</div><div class="sum">' + prods().join(" + ") + ' = ' + total() + '</div></div></div>';
+  }
+
+  function stepsNowB() {
+    if (S.demo) return S.step === 0 ? -1 : S.step === 5 ? 5 : S.step - 1;
+    return S.phase === "done" ? 5 : PH.indexOf(S.phase);
+  }
+
+  /* ---------- Comune ---------- */
+  function diffBar(m) {
+    const D = MODES[m].diff;
+    const unit = m === "b2d" ? " cifre" : "";
+    return '<div class="sfida-bar"><span class="tip">Livello:</span>' + Object.keys(D).map(k => '<button class="chip" data-diff="' + k + '" aria-pressed="' + (diffs[m] === k) + '">' + k[0].toUpperCase() + k.slice(1) + ' <small>(' + D[k][0] + "–" + D[k][1] + unit + ')</small></button>').join("") + '</div>';
+  }
+  function noteHtml() { return '<p class="note ' + S.note.c + '" id="note">' + S.note.t + '</p>'; }
+  function renderNote() { const el = $("note"); if (el) { el.className = "note " + S.note.c; el.textContent = S.note.t; } }
+
+  function render() {
+    const M = MODES[mode];
+    document.querySelectorAll(".mode").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === mode));
+    $("tagline").textContent = M.tagline;
+    $("memo").innerHTML = M.memo;
+    $("levels").innerHTML = M.levels.map(l => {
+      const st = saved.stars[l.id] || 0;
+      const hasStars = STAR_LEVELS.includes(l.id);
+      return '<button class="lv" data-lv="' + l.id + '" aria-pressed="' + (S.level === l.id) + '">' + l.label + ' <span class="num">' + (l.n != null ? l.n : "?") + '</span>' +
+        (hasStars ? '<span class="stars" aria-label="' + st + ' stelle su 3">' + starStr(st) + '</span>' : "") + '</button>';
+    }).join("");
+    $("pts").textContent = saved.pts;
+    $("totStars").textContent = STAR_LEVELS.reduce((a, k) => a + (saved.stars[k] || 0), 0) + "/" + STAR_LEVELS.length * 3;
+    document.querySelector(".modes").hidden = !B2D_ENABLED;
+    $("streak").textContent = streak + (saved.best ? " (rec. " + saved.best + ")" : "");
+
+    const now = mode === "d2b" ? stepsNowD() : stepsNowB();
+    $("steps").innerHTML = M.steps.map((t, i) => '<li class="' + (i < now ? "done" : i === now ? "now" : "") + '">' + t + '</li>').join("");
+
+    $("sheet").innerHTML = mode === "d2b" ? sheetD() : sheetB();
+    if (S.mode === "d2b") S.newRow = false; else S.fresh = -1;
+  }
+
+  function focusFirst() {
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    const el = $("qIn") || (S.mode === "b2d" && S.phase === "pos" ? $("c" + (L() - 1)) : $("c0")) || $("sumIn");
+    if (el) el.focus({ preventScroll: true });
+  }
+
+  function nextLevel() {
+    const lv = MODES[mode].levels;
+    if (isSfida()) { start(S.level); return; }
+    const idx = lv.findIndex(l => l.id === S.level);
+    start(lv[Math.min(idx + 1, lv.length - 1)].id);
+  }
+
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.mode) { setMode(t.dataset.mode); return; }
+    if (t.dataset.lv) { start(t.dataset.lv); return; }
+    if (t.dataset.diff) {
+      diffs[mode] = t.dataset.diff; store.set(mode === "d2b" ? "diff" : "diffB", t.dataset.diff);
+      start(mode === "d2b" ? "sfida" : "bsfida"); return;
+    }
+    if (t.dataset.pick != null && S.phase === "read") { pickD(Number(t.dataset.pick)); return; }
+    switch (t.id) {
+      case "checkBtn": S.mode === "d2b" ? checkRowD() : checkB(); break;
+      case "solBtn": if (S.mode === "d2b") { S.errors++; acceptD(S.rows[S.rows.length - 1], true); } else showSolB(); break;
+      case "resetBtn": start(S.level, isSfida() ? (S.mode === "d2b" ? S.n : S.bin) : undefined); break;
+      case "nextBtn": nextLevel(); break;
+      case "fwdBtn": S.step = Math.min(5, S.step + 1); render(); $("fwdBtn") ? $("fwdBtn").focus() : ($("demo2Btn") || $("nextBtn")).focus(); break;
+      case "prevBtn": S.step = Math.max(0, S.step - 1); render(); (S.step === 0 ? $("fwdBtn") : $("prevBtn")).focus(); break;
+      case "demo2Btn": S.bin = "1011"; S.digits = [1, 0, 1, 1]; S.step = 0; render(); $("fwdBtn").focus(); break;
+    }
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+    e.preventDefault();
+    const id = e.target.id;
+    if (id === "qIn") { const r = $("rIn"); if (r.value.trim() === "") r.focus(); else checkRowD(); return; }
+    if (id === "rIn") { checkRowD(); return; }
+    if (id === "sumIn") { checkB(); return; }
+    const m = /^c(\d+)$/.exec(id);
+    if (m) {
+      const nxt = $("c" + (Number(m[1]) + (S.phase === "pos" ? -1 : 1)));
+      if (nxt && nxt.value.trim() === "") nxt.focus(); else checkB();
+    }
+  });
+  document.addEventListener("input", e => {
+    if (e.target.classList.contains("cellin")) e.target.classList.remove("bad");
+    if (S && S.mode === "b2d" && S.phase === "pos" && /^c\d+$/.test(e.target.id)) {
+      let open = true;
+      for (let i = L() - 1; i >= 0; i--) {
+        const el = $("c" + i);
+        el.disabled = !open;
+        if (el.value.trim() === "") open = false;
+      }
+    }
+  });
+
+  start(MODES[mode].levels[0].id);
+})();
+</script>
+
+</body></html>
